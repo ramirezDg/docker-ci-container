@@ -39,9 +39,12 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp && \
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 # Configurar valores de PHP
-RUN echo "max_execution_time=300" >> /usr/local/etc/php/php.ini && \
-    echo "max_input_time=300" >> /usr/local/etc/php/php.ini && \
-    echo "memory_limit=512M" >> /usr/local/etc/php/php.ini && \
-    echo "post_max_size=128M" >> /usr/local/etc/php/php.ini && \
-    echo "output_buffering=On" >> /usr/local/etc/php/php.ini && \
-    echo "zlib.output_compression=Off" >> /usr/local/etc/php/php.ini
+RUN echo "post_max_size=1024M" >> /usr/local/etc/php/php.ini && \
+    echo "upload_max_filesize=1024M" >> /usr/local/etc/php/php.ini && \
+    echo "memory_limit=1024M" >> /usr/local/etc/php/php.ini && \
+    echo "max_input_time=900" >> /usr/local/etc/php/php.ini && \
+    echo "max_execution_time=900" >> /usr/local/etc/php/php.ini && \
+    echo "session.save_path=/tmp" >> /usr/local/etc/php/php.ini
+
+# Configurar permisos para my.cnf si existe
+RUN if [ -f /etc/mysql/conf.d/my.cnf ]; then chmod 644 /etc/mysql/conf.d/my.cnf; fi
