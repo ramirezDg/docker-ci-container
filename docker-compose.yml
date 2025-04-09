@@ -1,0 +1,68 @@
+version: '3.8'
+services:
+  nginx:
+    image: nginx:stable-alpine
+    container_name: nginx-ci
+    restart: always
+    ports:
+      - 8888:80
+    volumes:
+      - ./src:/var/www/html
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - php
+      - db
+    networks:
+      - ci-network
+
+  db:
+    container_name: db-ci
+    image: mariadb:10.5
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - 3310:3306
+    volumes:
+      - ./mysql:/var/lib/mysql
+      - ./my.cnf:/etc/mysql/conf.d/my.cnf
+    networks:
+      - ci-network
+
+  php:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: php-ci
+    volumes:
+      - ./src:/var/www/html
+    ports:
+      - 9000:80
+    networks:
+      - ci-network
+  
+  composer:
+    image: composer:2.8
+    container_name: composer
+    volumes:
+      - ./src:/app
+    working_dir: /app
+    command: composer install
+    networks:
+      - ci-network
+
+  phpmyadmin:
+    container_name: phpmyadmin-ci
+    image: phpmyadmin/phpmyadmin
+    ports:
+      - '8081:80'
+    restart: always
+    env_file:
+      - .env
+    depends_on:
+      - db
+    networks:
+    - ci-network
+
+networks:
+  ci-network:

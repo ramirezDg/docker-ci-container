@@ -1,0 +1,27 @@
+# Ignorar la carpeta src y todo su contenido
+src/
+
+# Ignorar datos generados por contenedores de Docker
+mysql/
+logs/
+*.log
+
+# Ignorar configuraciones específicas de Docker
+docker-compose.override.yml
+
+# Ignorar archivos temporales del sistema operativo
+.DS_Store
+Thumbs.db
+
+# Ignorar archivos de configuración de IDEs
+.vscode/
+.idea/
+
+# Ignorar dependencias de Composer (si las instalas localmente)
+vendor/
+
+# Ignorar archivos de configuración de PHP
+php.ini
+
+# Ignorar archivo de variables de entorno
+.env
