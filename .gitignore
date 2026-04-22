@@ -1,5 +1,7 @@
-# Ignorar la carpeta src y todo su contenido
-src/
+# Ignorar contenido de src/ pero trackear la carpeta
+# Cada proyecto adentro es su propio repo de GitHub — sin conflictos
+src/*
+!src/.gitkeep
 
 # Ignorar datos generados por contenedores de Docker
 mysql/

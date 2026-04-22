@@ -1,7 +1,4 @@
-# Local
-## FROM php:8.1.17-fpm-alpine
-# Server
-FROM php:7.4-fpm-alpine
+FROM php:7.4.33-fpm-alpine
 
 # Instalar dependencias del sistema necesarias para extensiones de PHP
 RUN apk add --no-cache \

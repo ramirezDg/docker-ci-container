@@ -1,119 +1,331 @@
-# Guía de Uso del Repositorio `docker-ci-container`
+# docker-ci-container
 
-Este repositorio contiene un entorno de desarrollo para CodeIgniter 3 utilizando contenedores Docker. A continuación, se detalla el funcionamiento de las rutas, cómo cargar la base de datos y otros aspectos importantes.
-
----
-
-## Estructura del Repositorio
-
-- **`Dockerfile`**: Archivo para construir la imagen de PHP con las extensiones necesarias.
-- **`docker-compose.yml`**: Define los servicios de Docker (Nginx, PHP, MariaDB, PhpMyAdmin).
-- **`nginx/default.conf`**: Configuración del servidor Nginx.
-- **`my.cnf`**: Configuración personalizada para MariaDB.
-- **`src/`**: Carpeta principal del proyecto CodeIgniter.
-- **`mysql/`**: Carpeta donde se almacenan los datos de la base de datos.
-- **`db.sql`**: Archivo SQL para inicializar la base de datos.
+Entorno de desarrollo local equivalente a XAMPP, basado en Docker.
+Permite correr múltiples proyectos PHP/CodeIgniter 3 simultáneamente dentro de `src/`,
+cada uno en su propio repositorio de GitHub, sin conflictos entre ellos.
 
 ---
 
-## Configuración de Rutas
+## Stack
 
-### Nginx
-- **Raíz del servidor**: `/var/www/html` (mapeado a `./src` en el host).
-- **Archivo de configuración**: `nginx/default.conf`.
-- **Puerto de acceso**: `http://localhost:8888`.
+| Servicio    | Imagen                     | Puerto local |
+|-------------|----------------------------|--------------|
+| Nginx       | nginx:stable-alpine        | 8888         |
+| PHP-FPM     | php:7.4.33-fpm-alpine      | interno      |
+| MariaDB     | mariadb:10.5               | 3307         |
+| PhpMyAdmin  | phpmyadmin/phpmyadmin      | 8081         |
+| Composer    | composer:2.8               | utilidad     |
 
-### PHP
-- **Puerto de acceso interno**: `9000` (FastCGI).
-- **Configuraciones personalizadas**:
-  - `max_execution_time=300`
-  - `memory_limit=512M`
-  - `post_max_size=128M`
-
-### MariaDB
-- **Puerto de acceso**: `3310` (mapeado al puerto `3306` del contenedor).
+> Puerto 3307 para MariaDB — evita conflicto con XAMPP que ocupa el 3306.
 
 ---
 
-## Cómo Cargar la Base de Datos
+## Estructura del repositorio
 
-1. Coloca el archivo SQL (`db.sql`) en la raíz del repositorio.
-2. El archivo será cargado automáticamente al iniciar el contenedor de MariaDB.
-3. Si necesitas cargarlo manualmente:
-
-   ```bash
-   docker exec -i db-ci mysql -u <usuario> -p<contraseña> <base_de_datos> < archivo.sql
-   ```
-
----
-
-## Cómo Iniciar el Proyecto
-
-1. Clona el repositorio:
-
-   ```bash
-   git clone <URL_DEL_REPOSITORIO>
-   cd docker-ci-container
-   ```
-
-2. Construye e inicia los contenedores:
-
-   ```bash
-   docker-compose up --build
-   ```
-
-### Accede a los servicios:
-
-- Aplicación: [http://localhost:8888](http://localhost:8888)
-- PhpMyAdmin: [http://localhost:8081](http://localhost:8081)
+```
+docker-ci-container/
+├── src/                  ← equivalente a htdocs/ de XAMPP (gitignored)
+│   ├── .gitkeep
+│   ├── proyecto-a/       ← repo GitHub independiente
+│   └── proyecto-b/       ← repo GitHub independiente
+├── nginx/
+│   └── default.conf
+├── mysql/                ← datos de MariaDB (gitignored)
+├── Dockerfile
+├── docker-compose.yml
+├── my.cnf
+└── .env                  ← variables de entorno (gitignored, crear desde .env.example)
+```
 
 ---
 
-## Notas Adicionales
+## Primera vez — setup inicial
 
-### Archivos Ignorados:
+### 1. Requisitos
 
-- La carpeta `src/` está en el `.gitignore` para evitar subir el código fuente al repositorio.
-- Los datos de la base de datos (`mysql/`) también están ignorados.
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- Git
 
-### Configuración de IDE:
+### 2. Clonar el repositorio
 
-- Archivos de configuración de VSCode (`.vscode/`) están ignorados en el repositorio.
+```bash
+git clone <URL_DEL_REPOSITORIO>
+cd docker-ci-container
+```
 
-### Logs:
+### 3. Crear el archivo de variables de entorno
 
-- Los logs generados por los contenedores están ignorados (`*.log`).
+Crear `.env` en la raíz con este contenido:
+
+```env
+MYSQL_ROOT_PASSWORD=root
+MYSQL_DATABASE=development
+MYSQL_USER=devuser
+MYSQL_PASSWORD=devpassword
+```
+
+> Cambiá los valores si querés credenciales distintas. El archivo está en `.gitignore` — nunca se sube al repo.
+
+### 4. Levantar los contenedores
+
+```bash
+docker-compose up --build
+```
+
+Primera vez tarda varios minutos — descarga imágenes y compila PHP.
+
+### 5. Verificar que todo funciona
+
+| URL | Servicio |
+|-----|----------|
+| http://localhost:8888 | Lista de proyectos (htdocs) |
+| http://localhost:8081 | PhpMyAdmin |
 
 ---
 
-## Comandos Útiles
+## Agregar un proyecto nuevo
 
-- **Reiniciar contenedores**:
+Cada proyecto vive en su propia carpeta dentro de `src/` y es un repositorio de GitHub independiente.
 
-  ```bash
-  docker-compose down && docker-compose up --build
-  ```
+```bash
+cd src/
+git clone https://github.com/tu-usuario/mi-proyecto.git
+```
 
-- **Acceder al contenedor de PHP**:
+Accedé al proyecto en: `http://localhost:8888/mi-proyecto/`
 
-  ```bash
-  docker exec -it php-ci sh
-  ```
+### Configurar CodeIgniter 3 para subdirectorio
 
-- **Acceder al contenedor de MariaDB**:
+En `src/mi-proyecto/application/config/config.php`:
 
-  ```bash
-  docker exec -it db-ci mysql -u <usuario> -p<contraseña>
-  ```
+```php
+$config['base_url'] = 'http://localhost:8888/mi-proyecto/';
+```
 
-- **Ver logs de Nginx**:
+### Instalar dependencias con Composer
 
-  ```bash
-  docker logs nginx-ci
-  ```
+```bash
+docker-compose run --rm composer install --working-dir=/app/mi-proyecto
+```
+
+---
+
+## Bases de datos
+
+### Opción A — PhpMyAdmin (visual)
+
+1. Abrir http://localhost:8081
+2. Usuario: `root` / Contraseña: la que pusiste en `.env` como `MYSQL_ROOT_PASSWORD`
+3. Click en "Nueva base de datos"
+4. Ingresar nombre y seleccionar charset `utf8mb4_general_ci`
+5. Click en "Crear"
+
+### Opción B — CLI
+
+```bash
+docker exec -it db-ci mysql -u root -p
+```
+
+```sql
+CREATE DATABASE mi_proyecto CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+CREATE USER 'devuser'@'%' IDENTIFIED BY 'devpassword';
+GRANT ALL PRIVILEGES ON mi_proyecto.* TO 'devuser'@'%';
+FLUSH PRIVILEGES;
+EXIT;
+```
+
+### Importar un dump SQL
+
+```bash
+docker exec -i db-ci mysql -u root -proot <nombre_db> < mi_dump.sql
+```
+
+> La contraseña va pegada al `-p` sin espacio: `-proot`, no `-p root`.
+
+Para dumps muy grandes (cientos de MB o más), usar `sh -c` para forzar los límites del cliente:
+
+```bash
+docker exec -i db-ci sh -c 'mysql -u root -proot --max_allowed_packet=1G <nombre_db>' < mi_dump.sql
+```
+
+### Exportar una base de datos
+
+```bash
+docker exec db-ci mysqldump -u root -proot --max-allowed-packet=1G <nombre_db> > backup.sql
+```
+
+### Conectar desde CodeIgniter 3
+
+En `src/mi-proyecto/application/config/database.php`:
+
+```php
+$db['default'] = array(
+    'dsn'      => '',
+    'hostname' => 'db',           // nombre del servicio en docker-compose
+    'username' => 'devuser',
+    'password' => 'devpassword',
+    'database' => 'mi_proyecto',
+    'dbdriver' => 'mysqli',
+    'dbprefix' => '',
+    'pconnect' => FALSE,
+    'db_debug' => TRUE,
+    'cache_on' => FALSE,
+    'cachedir' => '',
+    'char_set' => 'utf8mb4',
+    'dbcollat' => 'utf8mb4_general_ci',
+);
+```
+
+> El hostname es `db` (nombre del contenedor en la red interna), NO `localhost`.
+
+### Conectar desde cliente externo (TablePlus, DBeaver, etc.)
+
+```
+Host:     127.0.0.1
+Puerto:   3307
+Usuario:  root  (o devuser)
+Password: el que pusiste en .env
+```
+
+---
+
+## Comandos útiles
+
+### Contenedores
+
+```bash
+# Levantar (primera vez o después de cambios en Dockerfile)
+docker-compose up --build
+
+# Levantar en background
+docker-compose up -d
+
+# Apagar
+docker-compose down
+
+# Reiniciar todo
+docker-compose down && docker-compose up --build
+
+# Ver logs en tiempo real
+docker-compose logs -f
+
+# Ver logs de un servicio específico
+docker-compose logs -f nginx
+docker-compose logs -f php
+docker-compose logs -f db
+```
+
+### Acceder a los contenedores
+
+```bash
+# Entrar al contenedor PHP (para debug, artisan, etc.)
+docker exec -it php-ci sh
+
+# Entrar a MariaDB CLI
+docker exec -it db-ci mysql -u root -p
+```
+
+### Composer por proyecto
+
+```bash
+# Instalar dependencias
+docker-compose run --rm composer install --working-dir=/app/mi-proyecto
+
+# Agregar un paquete
+docker-compose run --rm composer require vendor/paquete --working-dir=/app/mi-proyecto
+
+# Actualizar dependencias
+docker-compose run --rm composer update --working-dir=/app/mi-proyecto
+```
+
+---
+
+## Notas importantes
+
+### Git y múltiples proyectos
+
+- `src/` está en `.gitignore` de este repo — los proyectos adentro no se suben acá.
+- Cada carpeta en `src/` es un repo independiente con su propio `.git/`.
+- No hay conflictos de git entre este repo de infraestructura y los repos de proyectos.
+
+### XAMPP coexistencia
+
+- MariaDB de Docker corre en puerto `3307` (XAMPP usa el `3306`).
+- Podés tener XAMPP y Docker corriendo al mismo tiempo sin conflictos.
+- PhpMyAdmin de Docker (`:8081`) administra solo la base de datos del contenedor.
+
+### Sesiones PHP
+
+- `session.save_path=/tmp` — las sesiones se guardan dentro del contenedor.
+- Si necesitás persistir sesiones entre reinicios, montá un volumen para `/tmp`.
+
+---
+
+## Troubleshooting
+
+### ERROR 1153: Got a packet bigger than 'max_allowed_packet' bytes
+
+**Causa**: el dump tiene filas o sentencias más grandes que el límite del servidor.
+MariaDB 10.5 acepta máximo **1 GB**. Cualquier valor mayor en `my.cnf` se ignora silenciosamente.
+
+**Solución**: reiniciar el contenedor de DB para que aplique el `my.cnf` actualizado:
+
+```bash
+docker-compose restart db
+```
+
+Verificar que el límite aplicó:
+
+```bash
+docker exec -it db-ci mysql -u root -proot -e "SHOW VARIABLES LIKE 'max_allowed_packet';"
+```
+
+Debe mostrar `1073741824` (= 1 GB).
+
+Luego reimportar:
+
+```bash
+docker exec -i db-ci sh -c 'mysql -u root -proot --max_allowed_packet=1G <nombre_db>' < mi_dump.sql
+```
+
+---
+
+### ERROR 2006: MySQL server has gone away (durante importación)
+
+**Causa**: la importación tardó más que `wait_timeout` (conexión cerrada por inactividad).
+
+**Solución**: el `my.cnf` ya tiene `wait_timeout=28800` (8 horas). Si sigue pasando, reiniciar DB y reimportar.
+
+---
+
+### PhpMyAdmin no conecta a la base de datos
+
+Verificar que el contenedor `db-ci` está corriendo:
+
+```bash
+docker-compose ps
+```
+
+Si `db` aparece como "Exit" o "Restarting":
+
+```bash
+docker-compose logs db
+```
+
+Causa más común: credenciales incorrectas en `.env`.
+
+---
+
+### Cambios en `my.cnf` no aplican
+
+`my.cnf` se monta como volumen. Los cambios aplican al reiniciar el servicio, no con hot-reload:
+
+```bash
+docker-compose restart db
+```
 
 ---
 
 ## Licencia
 
-Este proyecto está bajo la licencia MIT. Consulta el archivo `license.txt` para más detalles.
+MIT — ver `license.txt`.

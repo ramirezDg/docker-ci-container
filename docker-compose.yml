@@ -19,10 +19,20 @@ services:
     container_name: db-ci
     image: mariadb:10.5
     restart: always
+    command:
+      - --max-allowed-packet=1073741824
+      - --wait-timeout=28800
+      - --interactive-timeout=28800
+      - --net-read-timeout=3600
+      - --net-write-timeout=3600
+      - --innodb-buffer-pool-size=536870912
+      - --innodb-log-file-size=268435456
+      - --innodb-log-buffer-size=67108864
+      - --innodb-flush-log-at-trx-commit=2
     env_file:
       - .env
     ports:
-      - 3310:3306
+      - 3307:3306
     volumes:
       - ./mysql:/var/lib/mysql
       - ./my.cnf:/etc/mysql/conf.d/my.cnf
@@ -34,20 +44,18 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: php-ci
+    restart: always
     volumes:
       - ./src:/var/www/html
-    ports:
-      - 9000:80
     networks:
       - ci-network
-  
+
   composer:
     image: composer:2.8
     container_name: composer
     volumes:
       - ./src:/app
     working_dir: /app
-    command: composer install
     networks:
       - ci-network
 
@@ -59,10 +67,13 @@ services:
     restart: always
     env_file:
       - .env
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
     depends_on:
       - db
     networks:
-    - ci-network
+      - ci-network
 
 networks:
   ci-network:
