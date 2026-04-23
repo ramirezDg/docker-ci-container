@@ -23,7 +23,7 @@ A ready-to-use PHP development stack built for developers coming from XAMPP. Dro
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/<your-user>/docker-ci-container.git
+git clone https://github.com/ramirezDg/docker-ci-container.git
 cd docker-ci-container
 ```
 
@@ -146,7 +146,7 @@ If you want to use just the PHP-FPM image in your own `docker-compose.yml`:
 ```yaml
 services:
   php:
-    image: <your-dockerhub-user>/php-ci-dev:latest
+    image: versionamientopys/php-ci-dev:latest
     volumes:
       - ./src:/var/www/html
 ```
