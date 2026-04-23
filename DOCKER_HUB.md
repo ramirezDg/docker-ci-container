@@ -1,39 +1,105 @@
-# PHP CI Dev — XAMPP-like PHP 7.4 Development Environment
+# PHP CI Dev — Entorno de desarrollo PHP 7.4 tipo XAMPP
 
-A ready-to-use PHP development stack built for developers coming from XAMPP. Drop your projects into `src/` and they're served instantly — no configuration needed.
+Stack listo para usar. Colocá tus proyectos en `src/` y se sirven al instante, sin configuración adicional.
 
-## What's included
+## ¿Qué incluye?
 
-| Service     | Version          | Port  |
-|-------------|------------------|-------|
-| PHP-FPM     | 7.4.33 (Alpine)  | —     |
-| Nginx       | stable-alpine    | 8888  |
-| MariaDB     | 10.5             | 3307  |
-| phpMyAdmin  | latest           | 8081  |
-| Composer    | 2.8              | —     |
+| Servicio    | Versión          | Puerto |
+|-------------|------------------|--------|
+| PHP-FPM     | 7.4.33 (Alpine)  | —      |
+| Nginx       | stable-alpine    | 8888   |
+| MariaDB     | 10.5             | 3307   |
+| phpMyAdmin  | latest           | 8081   |
+| Composer    | 2.8              | —      |
 
-### PHP extensions pre-installed
+### Extensiones PHP incluidas
 
 `pdo` · `pdo_mysql` · `mysqli` · `gd` · `zip` · `xml` · `mbstring` · `bcmath` · `opcache`
 
 ---
 
-## Quick start
+## Inicio rápido
 
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/ramirezDg/docker-ci-container.git
-cd docker-ci-container
-```
-
-### 2. Create your `.env` file
+### 1. Bajá la imagen
 
 ```bash
-cp .env.example .env
+docker pull versionamientopys/php-ci-dev:latest
 ```
 
-Edit `.env`:
+### 2. Creá tu `docker-compose.yml`
+
+Copiá este archivo en una carpeta vacía de tu máquina:
+
+```yaml
+version: '3.8'
+services:
+  nginx:
+    image: nginx:stable-alpine
+    container_name: nginx-ci
+    restart: always
+    ports:
+      - 8888:80
+    volumes:
+      - ./src:/var/www/html
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - php
+      - db
+    networks:
+      - ci-network
+
+  php:
+    image: versionamientopys/php-ci-dev:latest
+    container_name: php-ci
+    restart: always
+    volumes:
+      - ./src:/var/www/html
+    networks:
+      - ci-network
+
+  db:
+    image: mariadb:10.5
+    container_name: db-ci
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - 3307:3306
+    volumes:
+      - ./mysql:/var/lib/mysql
+    networks:
+      - ci-network
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin-ci
+    ports:
+      - 8081:80
+    restart: always
+    env_file:
+      - .env
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+    depends_on:
+      - db
+    networks:
+      - ci-network
+
+  composer:
+    image: composer:2.8
+    container_name: composer
+    volumes:
+      - ./src:/app
+    working_dir: /app
+    networks:
+      - ci-network
+
+networks:
+  ci-network:
+```
+
+### 3. Creá tu `.env`
 
 ```env
 MYSQL_ROOT_PASSWORD=root
@@ -43,116 +109,156 @@ MYSQL_PASSWORD=secret
 PMA_ARBITRARY=1
 ```
 
-### 3. Add your PHP projects
+### 4. Creá la config de Nginx
 
-Place your projects inside the `src/` folder. Each subfolder becomes a project accessible by name:
+Creá el archivo `nginx/default.conf`:
 
+```nginx
+server {
+    listen 80;
+    index index.php index.html;
+    server_name localhost;
+    root /var/www/html;
+    client_max_body_size 1024M;
+
+    location = / {
+        autoindex on;
+        autoindex_exact_size off;
+        autoindex_localtime on;
+    }
+
+    location / {
+        try_files $uri $uri/ @project_fallback;
+    }
+
+    location @project_fallback {
+        rewrite ^(/[^/?]+) $1/index.php?$args last;
+    }
+
+    location ~ \.php$ {
+        try_files $uri =404;
+        fastcgi_split_path_info ^(.+\.php)(/.+)$;
+        fastcgi_pass php:9000;
+        fastcgi_index index.php;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param PATH_INFO $fastcgi_path_info;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+}
 ```
-src/
-├── myapp/
-│   └── index.php
-└── another-project/
-    └── index.php
-```
 
-### 4. Start the stack
+### 5. Levantá el stack
 
 ```bash
 docker compose up -d
 ```
 
-| URL                          | What                   |
-|------------------------------|------------------------|
-| http://localhost:8888        | Project listing (htdocs-style) |
-| http://localhost:8888/myapp  | Your project           |
-| http://localhost:8081        | phpMyAdmin             |
+| URL | Qué es |
+|-----|--------|
+| http://localhost:8888 | Listado de proyectos (estilo htdocs) |
+| http://localhost:8888/miapp | Tu proyecto |
+| http://localhost:8081 | phpMyAdmin |
 
 ---
 
-## URL routing
-
-Works like XAMPP `htdocs`. The first path segment maps to the project folder:
+## Estructura de carpetas
 
 ```
-http://localhost:8888/myapp/users/list
-→ src/myapp/index.php?...
+mi-proyecto/
+├── docker-compose.yml
+├── .env
+├── nginx/
+│   └── default.conf
+├── src/
+│   ├── miapp/
+│   │   └── index.php
+│   └── otro-proyecto/
+│       └── index.php
+└── mysql/          ← generado automáticamente por MariaDB
 ```
-
-No `.htaccess` tricks needed — Nginx handles the rewrite automatically.
 
 ---
 
-## Database connection
+## Ruteo de URLs
 
-Connect from PHP using these credentials (internal Docker network):
+Funciona como el `htdocs` de XAMPP. El primer segmento de la URL mapea a la carpeta del proyecto:
+
+```
+http://localhost:8888/miapp/usuarios/lista
+→ src/miapp/index.php?...
+```
+
+Sin `.htaccess` — Nginx maneja el rewrite automáticamente.
+
+---
+
+## Conexión a la base de datos
+
+Desde PHP, usá estas credenciales (red interna de Docker):
 
 ```php
-$host = 'db';       // service name inside Docker network
-$port = 3306;       // internal port
-$user = 'dev';      // MYSQL_USER from .env
-$pass = 'secret';   // MYSQL_PASSWORD from .env
-$db   = 'mydb';     // MYSQL_DATABASE from .env
+$host = 'db';      // nombre del servicio en la red Docker
+$port = 3306;      // puerto interno
+$user = 'dev';     // MYSQL_USER del .env
+$pass = 'secret';  // MYSQL_PASSWORD del .env
+$db   = 'mydb';    // MYSQL_DATABASE del .env
 ```
 
-> **Note:** MariaDB is exposed on port `3307` on your host machine to avoid conflicts with a local MySQL/XAMPP running on `3306`.
+> **Nota:** MariaDB está expuesto en el puerto `3307` en tu máquina para no chocar con un MySQL/XAMPP local en `3306`.
 
 ---
 
-## Run Composer
+## Usar Composer
 
 ```bash
 docker compose run --rm composer install
-docker compose run --rm composer require vendor/package
+docker compose run --rm composer require vendor/paquete
 ```
 
 ---
 
-## PHP configuration defaults
+## Configuración PHP por defecto
 
-| Setting               | Value   |
-|-----------------------|---------|
-| `post_max_size`       | 1024M   |
-| `upload_max_filesize` | 1024M   |
-| `memory_limit`        | 1024M   |
-| `max_execution_time`  | 900s    |
-| `max_input_time`      | 900s    |
+| Parámetro             | Valor  |
+|-----------------------|--------|
+| `post_max_size`       | 1024M  |
+| `upload_max_filesize` | 1024M  |
+| `memory_limit`        | 1024M  |
+| `max_execution_time`  | 900s   |
+| `max_input_time`      | 900s   |
 
 ---
 
-## Supported platforms
+## Plataformas soportadas
 
-| Architecture | Supported |
-|--------------|-----------|
-| `linux/amd64`  | ✅ x86-64 (Intel/AMD) |
+| Arquitectura   | Soporte |
+|----------------|---------|
+| `linux/amd64`  | ✅ Intel/AMD (x86-64) |
 | `linux/arm64`  | ✅ Apple Silicon, AWS Graviton |
 | `linux/arm/v7` | ✅ Raspberry Pi 3/4 |
 
 ---
 
-## Tags
+## Tags disponibles
 
-| Tag         | Description                   |
-|-------------|-------------------------------|
-| `latest`    | Latest stable build from main |
-| `1.0.0`     | Pinned version                |
-| `1.0`       | Minor version track           |
-
----
-
-## Use only the PHP image
-
-If you want to use just the PHP-FPM image in your own `docker-compose.yml`:
-
-```yaml
-services:
-  php:
-    image: versionamientopys/php-ci-dev:latest
-    volumes:
-      - ./src:/var/www/html
-```
+| Tag      | Descripción                      |
+|----------|----------------------------------|
+| `latest` | Última build estable desde main  |
+| `1.0.0`  | Versión fija                     |
+| `1.0`    | Track de versión menor           |
 
 ---
 
-## License
+## Código fuente
 
-MIT — use it freely in personal and commercial projects.
+GitHub: [ramirezDg/docker-ci-container](https://github.com/ramirezDg/docker-ci-container)
+
+---
+
+## Licencia
+
+MIT — libre para uso personal y comercial.
