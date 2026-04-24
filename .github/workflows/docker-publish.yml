@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 env:
-  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/php-ci-dev
+  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/container-codeigniter
 
 jobs:
   build-and-push:
@@ -60,5 +60,5 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-          repository: ${{ secrets.DOCKERHUB_USERNAME }}/php-ci-dev
+          repository: ${{ secrets.DOCKERHUB_USERNAME }}/container-codeigniter
           readme-filepath: ./DOCKER_HUB.md

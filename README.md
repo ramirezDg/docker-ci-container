@@ -1,8 +1,10 @@
-# docker-ci-container
+# container-codeigniter
 
 Entorno de desarrollo local equivalente a XAMPP, basado en Docker.
 Permite correr múltiples proyectos PHP/CodeIgniter 3 simultáneamente dentro de `src/`,
 cada uno en su propio repositorio de GitHub, sin conflictos entre ellos.
+
+> Imagen Docker publicada en Docker Hub: `versionamientopys/container-codeigniter`
 
 ---
 
@@ -23,7 +25,7 @@ cada uno en su propio repositorio de GitHub, sin conflictos entre ellos.
 ## Estructura del repositorio
 
 ```
-docker-ci-container/
+container-codeigniter/
 ├── src/                  ← equivalente a htdocs/ de XAMPP (gitignored)
 │   ├── .gitkeep
 │   ├── proyecto-a/       ← repo GitHub independiente
@@ -49,22 +51,22 @@ docker-ci-container/
 ### 2. Clonar el repositorio
 
 ```bash
-git clone <URL_DEL_REPOSITORIO>
-cd docker-ci-container
+git clone https://github.com/Proyectos-y-Soluciones-T-I/container-codeigniter.git
+cd container-codeigniter
 ```
 
 ### 3. Crear el archivo de variables de entorno
 
 Crear `.env` en la raíz con este contenido:
 
-```env
-MYSQL_ROOT_PASSWORD=root
-MYSQL_DATABASE=development
-MYSQL_USER=devuser
-MYSQL_PASSWORD=devpassword
-```
+> Los valores de abajo son **ejemplos** — cambiálos por tus propias credenciales. El archivo está en `.gitignore` — nunca se sube al repo.
 
-> Cambiá los valores si querés credenciales distintas. El archivo está en `.gitignore` — nunca se sube al repo.
+```env
+MYSQL_ROOT_PASSWORD=cambia-esto
+MYSQL_DATABASE=mi_base
+MYSQL_USER=mi_usuario
+MYSQL_PASSWORD=mi_password
+```
 
 ### 4. Levantar los contenedores
 
@@ -128,8 +130,8 @@ docker exec -it db-ci mysql -u root -p
 
 ```sql
 CREATE DATABASE mi_proyecto CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-CREATE USER 'devuser'@'%' IDENTIFIED BY 'devpassword';
-GRANT ALL PRIVILEGES ON mi_proyecto.* TO 'devuser'@'%';
+CREATE USER 'mi_usuario'@'%' IDENTIFIED BY 'mi_password';
+GRANT ALL PRIVILEGES ON mi_proyecto.* TO 'mi_usuario'@'%';
 FLUSH PRIVILEGES;
 EXIT;
 ```
@@ -137,7 +139,7 @@ EXIT;
 ### Importar un dump SQL
 
 ```bash
-docker exec -i db-ci mysql -u root -proot <nombre_db> < mi_dump.sql
+docker exec -i db-ci mysql -u root -p<tu-password> <nombre_db> < mi_dump.sql
 ```
 
 > La contraseña va pegada al `-p` sin espacio: `-proot`, no `-p root`.
@@ -145,13 +147,13 @@ docker exec -i db-ci mysql -u root -proot <nombre_db> < mi_dump.sql
 Para dumps muy grandes (cientos de MB o más), usar `sh -c` para forzar los límites del cliente:
 
 ```bash
-docker exec -i db-ci sh -c 'mysql -u root -proot --max_allowed_packet=1G <nombre_db>' < mi_dump.sql
+docker exec -i db-ci sh -c 'mysql -u root -p<tu-password> --max_allowed_packet=1G <nombre_db>' < mi_dump.sql
 ```
 
 ### Exportar una base de datos
 
 ```bash
-docker exec db-ci mysqldump -u root -proot --max-allowed-packet=1G <nombre_db> > backup.sql
+docker exec db-ci mysqldump -u root -p<tu-password> --max-allowed-packet=1G <nombre_db> > backup.sql
 ```
 
 ### Conectar desde CodeIgniter 3
@@ -162,8 +164,8 @@ En `src/mi-proyecto/application/config/database.php`:
 $db['default'] = array(
     'dsn'      => '',
     'hostname' => 'db',           // nombre del servicio en docker-compose
-    'username' => 'devuser',
-    'password' => 'devpassword',
+    'username' => 'mi_usuario',     // MYSQL_USER del .env
+    'password' => 'mi_password',    // MYSQL_PASSWORD del .env
     'database' => 'mi_proyecto',
     'dbdriver' => 'mysqli',
     'dbprefix' => '',
@@ -277,7 +279,7 @@ docker-compose restart db
 Verificar que el límite aplicó:
 
 ```bash
-docker exec -it db-ci mysql -u root -proot -e "SHOW VARIABLES LIKE 'max_allowed_packet';"
+docker exec -it db-ci mysql -u root -p<tu-password> -e "SHOW VARIABLES LIKE 'max_allowed_packet';"
 ```
 
 Debe mostrar `1073741824` (= 1 GB).
@@ -285,7 +287,7 @@ Debe mostrar `1073741824` (= 1 GB).
 Luego reimportar:
 
 ```bash
-docker exec -i db-ci sh -c 'mysql -u root -proot --max_allowed_packet=1G <nombre_db>' < mi_dump.sql
+docker exec -i db-ci sh -c 'mysql -u root -p<tu-password> --max_allowed_packet=1G <nombre_db>' < mi_dump.sql
 ```
 
 ---

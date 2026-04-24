@@ -1,6 +1,6 @@
-# PHP CI Dev — Entorno de desarrollo PHP 7.4 tipo XAMPP
+# container-codeigniter — Entorno de desarrollo PHP 7.4 tipo XAMPP
 
-Stack listo para usar. Colocá tus proyectos en `src/` y se sirven al instante, sin configuración adicional.
+Reemplazo de XAMPP basado en Docker. Soporta múltiples proyectos PHP/CodeIgniter 3 simultáneos dentro de `src/`, cada uno con su propio repo Git, sin conflictos de puertos ni de dependencias.
 
 ## ¿Qué incluye?
 
@@ -23,7 +23,7 @@ Stack listo para usar. Colocá tus proyectos en `src/` y se sirven al instante, 
 ### 1. Bajá la imagen
 
 ```bash
-docker pull versionamientopys/php-ci-dev:latest
+docker pull versionamientopys/container-codeigniter:latest
 ```
 
 ### 2. Creá tu `docker-compose.yml`
@@ -49,7 +49,7 @@ services:
       - ci-network
 
   php:
-    image: versionamientopys/php-ci-dev:latest
+    image: versionamientopys/container-codeigniter:latest
     container_name: php-ci
     restart: always
     volumes:
@@ -101,11 +101,13 @@ networks:
 
 ### 3. Creá tu `.env`
 
+> Los valores de abajo son **ejemplos** — cambiálos por tus propias credenciales. Este archivo no se sube al repo (está en `.gitignore`).
+
 ```env
-MYSQL_ROOT_PASSWORD=root
-MYSQL_DATABASE=mydb
-MYSQL_USER=dev
-MYSQL_PASSWORD=secret
+MYSQL_ROOT_PASSWORD=cambia-esto
+MYSQL_DATABASE=mi_base
+MYSQL_USER=mi_usuario
+MYSQL_PASSWORD=mi_password
 PMA_ARBITRARY=1
 ```
 
@@ -255,10 +257,10 @@ docker compose run --rm composer require vendor/paquete
 
 ## Código fuente
 
-GitHub: [ramirezDg/docker-ci-container](https://github.com/ramirezDg/docker-ci-container)
+GitHub: [Proyectos-y-Soluciones-T-I/container-codeigniter](https://github.com/Proyectos-y-Soluciones-T-I/container-codeigniter)
 
 ---
 
 ## Licencia
 
-MIT — libre para uso personal y comercial.
+MIT
