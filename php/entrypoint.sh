@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-for app_dir in /var/www/html/sai-superior /var/www/html/ijuridica; do
+for app_dir in /var/www/html/*/; do
     if [ -d "$app_dir" ]; then
         # Install Composer dependencies if vendor/ is missing.
         # Build in /tmp to avoid Windows-volume permission issues with deep trees.
