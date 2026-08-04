@@ -16,7 +16,7 @@ for app_dir in /var/www/html/*/; do
                 --prefer-dist \
                 --no-interaction \
                 --no-progress 2>&1
-            mv "$tmp_dir/vendor" "$app_dir/vendor"
+            rm -rf "$app_dir/vendor" && mv "$tmp_dir/vendor" "$app_dir/vendor"
             [ -f "$tmp_dir/composer.lock" ] && cp "$tmp_dir/composer.lock" "$app_dir/composer.lock"
             rm -rf "$tmp_dir"
             echo "[entrypoint] composer install done."
